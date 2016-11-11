@@ -89,28 +89,44 @@ view { grid, ant, viewPort } =
 viewAnt : ViewPort -> Ant -> Svg msg
 viewAnt { scale } (Ant ( x, y ) direction) =
     let
-        value =
-            case direction of
-                North ->
-                    "N"
+        half =
+            scale // 2 |> toString
 
-                East ->
-                    "E"
+        full =
+            scale |> toString
 
-                South ->
-                    "S"
+        pathString =
+            "M" ++ half ++ " 0 L" ++ full ++ " " ++ half ++ " L0 " ++ half ++ " L" ++ half ++ " 0"
 
-                West ->
-                    "W"
-    in
-        Svg.g []
-            [ Svg.text'
-                [ SvgA.x (x * scale |> toString)
-                , SvgA.y (y * scale |> toString)
-                , SvgA.fill "blue"
+        arrow =
+            Svg.path
+                [ SvgA.d (Debug.log "path: " pathString)
+                , SvgA.style "fill: #76daff"
                 ]
-                [ Svg.text value ]
-            ]
+                []
+
+        rotate =
+            let
+                rotation =
+                    case direction of
+                        North ->
+                            "0"
+
+                        East ->
+                            "90"
+
+                        South ->
+                            "180"
+
+                        West ->
+                            "270"
+            in
+                "rotate(" ++ rotation ++ "," ++ half ++ "," ++ half ++ ")"
+
+        translate =
+            "translate(" ++ (x * scale |> toString) ++ "," ++ (y * scale |> toString) ++ ")"
+    in
+        Svg.g [ SvgA.transform (translate ++ "," ++ rotate) ] [ arrow ]
 
 
 viewGrid : ViewPort -> Grid -> Svg msg
