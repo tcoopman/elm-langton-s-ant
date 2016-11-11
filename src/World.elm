@@ -1,30 +1,7 @@
-module World exposing (tick, init, colorAtPosition, Ant(..), Color(..), Grid, Direction(..), Position)
+module World exposing (tick, init, colorAtPosition)
 
-import Dict exposing (Dict)
-
-
-type Direction
-    = North
-    | East
-    | South
-    | West
-
-
-type alias Position =
-    ( Int, Int )
-
-
-type Ant
-    = Ant Position Direction
-
-
-type Color
-    = Black
-    | White
-
-
-type alias Grid =
-    Dict Position Color
+import Dict
+import Types exposing (ViewPort, Direction(..), Position, Ant(..), Color(..), Grid)
 
 
 init : ( Grid, Ant )

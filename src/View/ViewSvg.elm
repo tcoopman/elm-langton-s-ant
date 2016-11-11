@@ -1,14 +1,10 @@
-module ViewSvg exposing (view)
+module View.ViewSvg exposing (view)
 
 import Svg exposing (Svg, svg, rect)
 import Svg.Attributes as SvgA
-import Types exposing (ViewPort)
-import World exposing (colorAtPosition, Ant(..), Color(..), Grid, Direction(..), Position)
-
-
-scale : ViewPort -> Int
-scale { min, max, size } =
-    size // (max - min) |> abs
+import Types exposing (ViewPort, Ant(..), Color(..), Grid, Direction(..), Position)
+import World exposing (colorAtPosition)
+import View.Helpers exposing (scale, positionsToDraw)
 
 
 view : Grid -> Ant -> ViewPort -> Svg msg
@@ -82,21 +78,10 @@ viewAnt viewPort (Ant ( x, y ) direction) =
 
 viewGrid : ViewPort -> Grid -> Svg msg
 viewGrid viewPort grid =
-    let
-        positionsToDraw =
-            let
-                square row column =
-                    ( column, row )
-
-                rows row =
-                    List.map (square row) [viewPort.min..viewPort.max]
-            in
-                List.concatMap rows [viewPort.min..viewPort.max]
-    in
-        Svg.g []
-            (List.map (\pos -> ( pos, colorAtPosition grid pos )) positionsToDraw
-                |> List.map (\( pos, color ) -> viewSquare viewPort pos color)
-            )
+    Svg.g []
+        (List.map (\pos -> ( pos, colorAtPosition grid pos )) (positionsToDraw viewPort grid)
+            |> List.map (\( pos, color ) -> viewSquare viewPort pos color)
+        )
 
 
 viewSquare : ViewPort -> Position -> Color -> Svg msg
