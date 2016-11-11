@@ -1,6 +1,7 @@
 module View.Helpers exposing (scale, positionsToDraw)
 
 import Types exposing (ViewPort, Grid, Position)
+import Dict
 
 
 scale : ViewPort -> Int
@@ -10,11 +11,5 @@ scale { min, max, size } =
 
 positionsToDraw : ViewPort -> Grid -> List Position
 positionsToDraw viewPort grid =
-    let
-        square row column =
-            ( column, row )
-
-        rows row =
-            List.map (square row) [viewPort.min..viewPort.max]
-    in
-        List.concatMap rows [viewPort.min..viewPort.max]
+    Dict.keys grid
+        |> List.filter (\( x, y ) -> (x > viewPort.min && x < viewPort.max) && (y > viewPort.min && y < viewPort.max))
