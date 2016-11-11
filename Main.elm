@@ -16,6 +16,7 @@ type alias Model =
     , viewPort : ViewPort
     , speed : Float
     , renderer : Renderer
+    , turbo : Bool
     }
 
 
@@ -25,6 +26,8 @@ type Msg
     | Slower
     | Grow
     | SwitchRenderer
+    | Reset
+    | ToggleTurbo
 
 
 newModel : Model
@@ -38,6 +41,7 @@ newModel =
         , viewPort = { min = -10, max = 10, size = 500 }
         , speed = 256
         , renderer = View.defaultRenderer
+        , turbo = False
         }
 
 
@@ -47,7 +51,9 @@ view ({ grid, ant, viewPort, speed, renderer } as model) =
         [ Html.button [ onClick Faster ] [ Html.text "faster" ]
         , Html.button [ onClick Slower ] [ Html.text "slower" ]
         , Html.button [ onClick Grow ] [ Html.text "grow" ]
-        , Html.button [ onClick SwitchRenderer ] [ Html.text "switch renderer" ]
+        , Html.button [ onClick SwitchRenderer ] [ Html.text (toString renderer) ]
+        , Html.button [ onClick Reset ] [ Html.text "reset" ]
+        , Html.button [ onClick ToggleTurbo ] [ Html.text ("turbo: " ++ (toString model.turbo)) ]
         , View.view renderer grid ant viewPort
         ]
 
@@ -63,8 +69,16 @@ update msg ({ grid, ant, speed, viewPort } as model) =
 
         Tick t ->
             let
+                tickTimes ( grid, ant ) times =
+                    List.foldl (\_ old -> tick old) ( grid, ant ) [1..times]
+
                 ( grid, ant ) =
-                    tick ( grid, ant )
+                    case model.turbo of
+                        False ->
+                            tickTimes ( grid, ant ) 1
+
+                        True ->
+                            tickTimes ( grid, ant ) 10
             in
                 ( { model | grid = grid, ant = ant }, Cmd.none )
 
@@ -81,6 +95,16 @@ update msg ({ grid, ant, speed, viewPort } as model) =
 
         SwitchRenderer ->
             ( { model | renderer = View.switchRenderer model.renderer }, Cmd.none )
+
+        Reset ->
+            let
+                ( grid, ant ) =
+                    World.init
+            in
+                ( { model | grid = grid, ant = ant }, Cmd.none )
+
+        ToggleTurbo ->
+            ( { model | turbo = not model.turbo }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
