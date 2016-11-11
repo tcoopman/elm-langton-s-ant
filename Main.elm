@@ -1,49 +1,19 @@
 module Main exposing (..)
 
 import Html exposing (Html)
+import Html.Attributes as HtmlA
+import Html.Events exposing (onClick)
 import Html.App as App
-import Dict exposing (Dict)
 import Svg exposing (Svg, svg, rect)
 import Svg.Attributes as SvgA
 import Time exposing (Time, millisecond)
-
-
-type Direction
-    = North
-    | East
-    | South
-    | West
-
-
-type alias Position =
-    ( Int, Int )
-
-
-type Ant
-    = Ant Position Direction
-
-
-type Color
-    = Black
-    | White
-
-
-type alias Grid =
-    Dict Position Color
-
-
-colorAtPosition : Grid -> Position -> Color
-colorAtPosition grid position =
-    Dict.get position grid
-        |> Maybe.withDefault White
+import World exposing (colorAtPosition, tick, Ant(..), Color(..), Grid, Direction(..), Position)
 
 
 type alias ViewPort =
-    { xMin : Int
-    , yMin : Int
-    , xMax : Int
-    , yMax : Int
-    , scale : Int
+    { min : Int
+    , max : Int
+    , size : Int
     }
 
 
@@ -51,56 +21,81 @@ type alias Model =
     { grid : Grid
     , ant : Ant
     , viewPort : ViewPort
+    , speed : Float
     }
 
 
 type Msg
     = Tick Time
+    | Faster
+    | Slower
+    | Grow
 
 
 newModel : Model
 newModel =
-    { grid = Dict.empty
-    , ant = Ant ( 0, 0 ) West
-    , viewPort = { xMin = -10, yMin = -10, xMax = 10, yMax = 10, scale = 20 }
-    }
+    let
+        ( grid, ant ) =
+            World.init
+    in
+        { grid = grid
+        , ant = ant
+        , viewPort = { min = -10, max = 10, size = 500 }
+        , speed = 256
+        }
+
+
+scale : ViewPort -> Int
+scale { min, max, size } =
+    size // (max - min) |> abs
 
 
 view : Model -> Html Msg
-view { grid, ant, viewPort } =
+view ({ grid, ant, viewPort, speed } as model) =
     let
-        widthString =
-            viewPort.xMax - viewPort.xMin |> (*) viewPort.scale |> abs |> toString
+        scaleFactor =
+            scale viewPort
 
-        heightString =
-            viewPort.yMax - viewPort.yMin |> (*) viewPort.scale |> abs |> toString
+        min =
+            viewPort.min * (scale viewPort) |> toString
+
+        size =
+            viewPort.size * 2 |> toString
 
         viewBoxString =
-            (viewPort.xMin * viewPort.scale |> toString) ++ " " ++ (viewPort.yMin * viewPort.scale |> toString) ++ " " ++ widthString ++ " " ++ heightString
+            min ++ " " ++ min ++ " " ++ (viewPort.size * 2 |> toString) ++ " " ++ (viewPort.size * 2 |> toString)
     in
-        svg
-            [ SvgA.width widthString
-            , SvgA.height heightString
-            , SvgA.viewBox viewBoxString
+        Html.div []
+            [ Html.button [ onClick Faster ] [ Html.text "faster" ]
+            , Html.button [ onClick Slower ] [ Html.text "slower" ]
+            , Html.button [ onClick Grow ] [ Html.text "grow" ]
+            , svg
+                [ SvgA.width size
+                , SvgA.height size
+                , SvgA.viewBox viewBoxString
+                ]
+                [ (viewGrid viewPort grid), (viewAnt viewPort ant) ]
             ]
-            [ (viewGrid viewPort grid), (viewAnt viewPort ant) ]
 
 
 viewAnt : ViewPort -> Ant -> Svg msg
-viewAnt { scale } (Ant ( x, y ) direction) =
+viewAnt viewPort (Ant ( x, y ) direction) =
     let
+        scaleFactor =
+            scale viewPort
+
         half =
-            scale // 2 |> toString
+            scaleFactor // 2 |> toString
 
         full =
-            scale |> toString
+            scaleFactor |> toString
 
         pathString =
             "M" ++ half ++ " 0 L" ++ full ++ " " ++ half ++ " L0 " ++ half ++ " L" ++ half ++ " 0"
 
         arrow =
             Svg.path
-                [ SvgA.d (Debug.log "path: " pathString)
+                [ SvgA.d pathString
                 , SvgA.style "fill: #76daff"
                 ]
                 []
@@ -124,7 +119,7 @@ viewAnt { scale } (Ant ( x, y ) direction) =
                 "rotate(" ++ rotation ++ "," ++ half ++ "," ++ half ++ ")"
 
         translate =
-            "translate(" ++ (x * scale |> toString) ++ "," ++ (y * scale |> toString) ++ ")"
+            "translate(" ++ (x * scaleFactor |> toString) ++ "," ++ (y * scaleFactor |> toString) ++ ")"
     in
         Svg.g [ SvgA.transform (translate ++ "," ++ rotate) ] [ arrow ]
 
@@ -138,9 +133,9 @@ viewGrid viewPort grid =
                     ( column, row )
 
                 rows row =
-                    List.map (square row) [viewPort.xMin..viewPort.xMax]
+                    List.map (square row) [viewPort.min..viewPort.max]
             in
-                List.concatMap rows [viewPort.yMin..viewPort.yMax]
+                List.concatMap rows [viewPort.min..viewPort.max]
     in
         Svg.g []
             (List.map (\pos -> ( pos, colorAtPosition grid pos )) positionsToDraw
@@ -149,7 +144,7 @@ viewGrid viewPort grid =
 
 
 viewSquare : ViewPort -> Position -> Color -> Svg msg
-viewSquare { xMin, xMax, yMin, yMax, scale } ( x, y ) color =
+viewSquare viewPort ( x, y ) color =
     let
         colorString =
             case color of
@@ -158,102 +153,52 @@ viewSquare { xMin, xMax, yMin, yMax, scale } ( x, y ) color =
 
                 Black ->
                     "black"
+
+        scaleFactor =
+            scale viewPort
     in
         rect
-            [ SvgA.x (x * scale |> toString)
-            , SvgA.y (y * scale |> toString)
-            , SvgA.width (toString scale)
-            , SvgA.height (toString scale)
+            [ SvgA.x (x * scaleFactor |> toString)
+            , SvgA.y (y * scaleFactor |> toString)
+            , SvgA.width (toString scaleFactor)
+            , SvgA.height (toString scaleFactor)
             , SvgA.fill colorString
             , SvgA.stroke "black"
             ]
             []
 
 
-rotateRight : Ant -> Ant
-rotateRight (Ant position direction) =
-    case direction of
-        North ->
-            Ant position East
-
-        East ->
-            Ant position South
-
-        South ->
-            Ant position West
-
-        West ->
-            Ant position North
-
-
-rotateLeft : Ant -> Ant
-rotateLeft (Ant position direction) =
-    case direction of
-        North ->
-            Ant position West
-
-        West ->
-            Ant position South
-
-        South ->
-            Ant position East
-
-        East ->
-            Ant position North
-
-
-flipColor : Grid -> Position -> Grid
-flipColor grid position =
-    case colorAtPosition grid position of
-        Black ->
-            Dict.remove position grid
-
-        White ->
-            Dict.insert position Black grid
-
-
-moveForward : Ant -> Ant
-moveForward (Ant ( x, y ) direction) =
-    case direction of
-        North ->
-            Ant ( x, y - 1 ) direction
-
-        East ->
-            Ant ( x + 1, y ) direction
-
-        South ->
-            Ant ( x, y + 1 ) direction
-
-        West ->
-            Ant ( x - 1, y ) direction
-
-
-tick : ( Grid, Ant ) -> ( Grid, Ant )
-tick ( grid, ant ) =
-    case ant of
-        Ant position direction ->
-            case colorAtPosition grid position of
-                White ->
-                    ( flipColor grid position, ant |> rotateRight |> moveForward )
-
-                Black ->
-                    ( flipColor grid position, ant |> rotateLeft |> moveForward )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ grid, ant, speed, viewPort } as model) =
     case msg of
-        Tick _ ->
+        Faster ->
+            ( { model | speed = speed / 2 }, Cmd.none )
+
+        Slower ->
+            ( { model | speed = speed * 2 }, Cmd.none )
+
+        Tick t ->
             let
                 ( grid, ant ) =
-                    tick ( model.grid, model.ant )
+                    tick ( grid, ant )
             in
                 ( { model | grid = grid, ant = ant }, Cmd.none )
+
+        Grow ->
+            ( { model
+                | viewPort =
+                    { viewPort
+                        | min = viewPort.min - 5
+                        , max = viewPort.max + 5
+                    }
+              }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every (2000 * millisecond) Tick
+    Time.every model.speed Tick
 
 
 main =
