@@ -54,7 +54,7 @@ view ({ grid, ant, viewPort, speed, renderer } as model) =
         , Html.button [ onClick SwitchRenderer ] [ Html.text (toString renderer) ]
         , Html.button [ onClick Reset ] [ Html.text "reset" ]
         , Html.button [ onClick ToggleTurbo ] [ Html.text ("turbo: " ++ (toString model.turbo)) ]
-        , View.view renderer grid ant viewPort
+        , Html.div [] [ View.view renderer grid ant viewPort ]
         ]
 
 
