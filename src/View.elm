@@ -13,7 +13,7 @@ type Renderer
 
 
 defaultRenderer =
-    Canvas
+    Svg
 
 
 switchRenderer : Renderer -> Renderer

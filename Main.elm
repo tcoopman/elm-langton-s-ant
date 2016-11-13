@@ -8,6 +8,7 @@ import Time exposing (Time, millisecond)
 import World exposing (tick)
 import View exposing (Renderer)
 import Types exposing (ViewPort, Ant, Grid)
+import Random
 
 
 type alias Model =
@@ -17,6 +18,7 @@ type alias Model =
     , speed : Float
     , renderer : Renderer
     , turbo : Bool
+    , running : Bool
     }
 
 
@@ -27,7 +29,10 @@ type Msg
     | Grow
     | SwitchRenderer
     | Reset
+    | ResetWithRandom
     | ToggleTurbo
+    | NewGame ( Grid, Ant )
+    | TogglePause
 
 
 newModel : Model
@@ -42,20 +47,32 @@ newModel =
         , speed = 256
         , renderer = View.defaultRenderer
         , turbo = False
+        , running = False
         }
 
 
 view : Model -> Html Msg
 view ({ grid, ant, viewPort, speed, renderer } as model) =
-    Html.div []
-        [ Html.button [ onClick Faster ] [ Html.text "faster" ]
-        , Html.button [ onClick Slower ] [ Html.text "slower" ]
-        , Html.button [ onClick Grow ] [ Html.text "grow" ]
-        , Html.button [ onClick SwitchRenderer ] [ Html.text (toString renderer) ]
-        , Html.button [ onClick Reset ] [ Html.text "reset" ]
-        , Html.button [ onClick ToggleTurbo ] [ Html.text ("turbo: " ++ (toString model.turbo)) ]
-        , Html.div [] [ View.view renderer grid ant viewPort ]
-        ]
+    let
+        startOrStop =
+            case model.running of
+                True ->
+                    "stop"
+
+                False ->
+                    "start"
+    in
+        Html.div []
+            [ Html.button [ onClick TogglePause ] [ Html.text startOrStop ]
+            , Html.button [ onClick Faster ] [ Html.text "faster" ]
+            , Html.button [ onClick Slower ] [ Html.text "slower" ]
+            , Html.button [ onClick Grow ] [ Html.text "grow" ]
+            , Html.button [ onClick SwitchRenderer ] [ Html.text (toString renderer) ]
+            , Html.button [ onClick Reset ] [ Html.text "reset" ]
+            , Html.button [ onClick ResetWithRandom ] [ Html.text "random new game" ]
+            , Html.button [ onClick ToggleTurbo ] [ Html.text ("turbo: " ++ (toString model.turbo)) ]
+            , Html.div [] [ View.view renderer grid ant viewPort ]
+            ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -103,13 +120,25 @@ update msg ({ grid, ant, speed, viewPort } as model) =
             in
                 ( { model | grid = grid, ant = ant }, Cmd.none )
 
+        NewGame ( grid, ant ) ->
+            ( { model | grid = grid, ant = ant }, Cmd.none )
+
         ToggleTurbo ->
             ( { model | turbo = not model.turbo }, Cmd.none )
+
+        ResetWithRandom ->
+            ( model, Random.generate NewGame World.generator )
+
+        TogglePause ->
+            ( { model | running = not model.running }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every model.speed Tick
+    if not model.running then
+        Sub.none
+    else
+        Time.every model.speed Tick
 
 
 main =

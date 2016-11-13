@@ -1,6 +1,9 @@
-module World exposing (tick, init, colorAtPosition)
+module World exposing (tick, init, colorAtPosition, generator)
 
 import Dict
+import Random
+import Random.Dict as RandomDict
+import Random.Extra as RandomExtra
 import Types exposing (ViewPort, Direction(..), Position, Ant(..), Color(..), Grid)
 
 
@@ -83,3 +86,31 @@ tick ( grid, ant ) =
 
                 Black ->
                     ( flipColor grid position, ant |> rotateLeft |> moveForward )
+
+
+generator : Random.Generator ( Grid, Ant )
+generator =
+    let
+        min =
+            -10
+
+        max =
+            10
+
+        randomPosition =
+            Random.pair (Random.int min max) (Random.int min max)
+
+        randomColor =
+            RandomExtra.choice White Black
+
+        randomGrid =
+            RandomDict.dict 100 randomPosition randomColor
+
+        randomDirection =
+            RandomExtra.sample [ North, East, South, West ]
+                |> Random.map (Maybe.withDefault North)
+
+        randomAnt =
+            Random.map2 (\p d -> Ant p d) randomPosition randomDirection
+    in
+        Random.pair randomGrid randomAnt
