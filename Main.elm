@@ -5,15 +5,14 @@ import Html.Attributes as HtmlA
 import Html.Events exposing (onClick)
 import Html.App as App
 import Time exposing (Time, millisecond)
-import World exposing (tick)
+import World exposing (World, tick)
 import View exposing (Renderer)
 import Types exposing (ViewPort, Ant, Grid)
 import Random
 
 
 type alias Model =
-    { grid : Grid
-    , ant : Ant
+    { world : World
     , viewPort : ViewPort
     , speed : Float
     , renderer : Renderer
@@ -31,28 +30,23 @@ type Msg
     | Reset
     | ResetWithRandom
     | ToggleTurbo
-    | NewGame ( Grid, Ant )
+    | NewWorld World
     | TogglePause
 
 
 newModel : Model
 newModel =
-    let
-        ( grid, ant ) =
-            World.init
-    in
-        { grid = grid
-        , ant = ant
-        , viewPort = { min = -10, max = 10, size = 500 }
-        , speed = 256
-        , renderer = View.defaultRenderer
-        , turbo = False
-        , running = False
-        }
+    { world = World.init
+    , viewPort = { min = -10, max = 10, size = 500 }
+    , speed = 256
+    , renderer = View.defaultRenderer
+    , turbo = False
+    , running = False
+    }
 
 
 view : Model -> Html Msg
-view ({ grid, ant, viewPort, speed, renderer } as model) =
+view ({ world, viewPort, speed, renderer } as model) =
     let
         startOrStop =
             case model.running of
@@ -71,12 +65,12 @@ view ({ grid, ant, viewPort, speed, renderer } as model) =
             , Html.button [ onClick Reset ] [ Html.text "reset" ]
             , Html.button [ onClick ResetWithRandom ] [ Html.text "random new game" ]
             , Html.button [ onClick ToggleTurbo ] [ Html.text ("turbo: " ++ (toString model.turbo)) ]
-            , Html.div [] [ View.view renderer grid ant viewPort ]
+            , Html.div [] [ View.view renderer world.grid world.ant viewPort ]
             ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ grid, ant, speed, viewPort } as model) =
+update msg ({ world, speed, viewPort } as model) =
     case msg of
         Faster ->
             ( { model | speed = speed / 2 }, Cmd.none )
@@ -86,18 +80,18 @@ update msg ({ grid, ant, speed, viewPort } as model) =
 
         Tick t ->
             let
-                tickTimes ( grid, ant ) times =
-                    List.foldl (\_ old -> tick old) ( grid, ant ) [1..times]
+                tickTimes times =
+                    List.foldl (\_ old -> tick old) world [1..times]
 
-                ( grid, ant ) =
+                newWorld =
                     case model.turbo of
                         False ->
-                            tickTimes ( grid, ant ) 1
+                            tickTimes 1
 
                         True ->
-                            tickTimes ( grid, ant ) 10
+                            tickTimes 10
             in
-                ( { model | grid = grid, ant = ant }, Cmd.none )
+                ( { model | world = newWorld }, Cmd.none )
 
         Grow ->
             ( { model
@@ -114,20 +108,16 @@ update msg ({ grid, ant, speed, viewPort } as model) =
             ( { model | renderer = View.switchRenderer model.renderer }, Cmd.none )
 
         Reset ->
-            let
-                ( grid, ant ) =
-                    World.init
-            in
-                ( { model | grid = grid, ant = ant }, Cmd.none )
+            ( { model | world = World.init }, Cmd.none )
 
-        NewGame ( grid, ant ) ->
-            ( { model | grid = grid, ant = ant }, Cmd.none )
+        NewWorld world ->
+            ( { model | world = world }, Cmd.none )
 
         ToggleTurbo ->
             ( { model | turbo = not model.turbo }, Cmd.none )
 
         ResetWithRandom ->
-            ( model, Random.generate NewGame World.generator )
+            ( model, Random.generate NewWorld World.generator )
 
         TogglePause ->
             ( { model | running = not model.running }, Cmd.none )

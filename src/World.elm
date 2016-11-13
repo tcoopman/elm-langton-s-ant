@@ -1,4 +1,4 @@
-module World exposing (tick, init, stateAtPosition, generator)
+module World exposing (World, tick, init, stateAtPosition, generator)
 
 import Array exposing (Array)
 import Dict
@@ -6,6 +6,13 @@ import Random
 import Random.Dict as RandomDict
 import Random.Extra as RandomExtra
 import Types exposing (ViewPort, Direction(..), Position, Ant(..), State, Grid, LR(..))
+
+
+type alias World =
+    { grid : Grid
+    , ant : Ant
+    , genome : Genome
+    }
 
 
 type Color
@@ -16,12 +23,13 @@ type alias Genome =
     Array LR
 
 
-genome : Genome
-genome =
+defaultGenome : Genome
+defaultGenome =
     Array.fromList [ Left, Right ]
 
 
-genomeSize =
+genomeSize : Genome -> Int
+genomeSize genome =
     Array.length genome
 
 
@@ -39,9 +47,12 @@ lr genome state =
                 Debug.crash "this is an impossible state"
 
 
-init : ( Grid, Ant )
+init : World
 init =
-    ( Dict.empty, Ant ( 0, 0 ) West )
+    { grid = Dict.empty
+    , ant = Ant ( 0, 0 ) West
+    , genome = defaultGenome
+    }
 
 
 stateAtPosition : Grid -> Position -> State
@@ -82,14 +93,14 @@ rotateLeft (Ant position direction) =
             Ant position North
 
 
-changeState : Grid -> Position -> Grid
-changeState grid position =
+changeState : Grid -> Position -> Genome -> Grid
+changeState grid position genome =
     let
         currentState =
             stateAtPosition grid position
 
         nextState =
-            (currentState + 1) % genomeSize
+            (currentState + 1) % (genomeSize genome)
     in
         if nextState == 0 then
             Dict.remove position grid
@@ -113,8 +124,8 @@ moveForward (Ant ( x, y ) direction) =
             Ant ( x - 1, y ) direction
 
 
-tick : ( Grid, Ant ) -> ( Grid, Ant )
-tick ( grid, ant ) =
+tick : World -> World
+tick { grid, ant, genome } =
     case ant of
         Ant position direction ->
             let
@@ -130,10 +141,13 @@ tick ( grid, ant ) =
                             Right ->
                                 rotateRight
             in
-                ( changeState grid position, ant |> rotate |> moveForward )
+                { grid = changeState grid position genome
+                , ant = ant |> rotate |> moveForward
+                , genome = genome
+                }
 
 
-generator : Random.Generator ( Grid, Ant )
+generator : Random.Generator World
 generator =
     let
         min =
@@ -158,4 +172,12 @@ generator =
         randomAnt =
             Random.map2 (\p d -> Ant p d) randomPosition randomDirection
     in
-        Random.pair randomGrid randomAnt
+        Random.map2
+            (\grid ant ->
+                { grid = grid
+                , ant = ant
+                , genome = defaultGenome
+                }
+            )
+            randomGrid
+            randomAnt
