@@ -25,7 +25,7 @@ type alias Genome =
 
 defaultGenome : Genome
 defaultGenome =
-    Array.fromList [ Left, Right ]
+    Array.fromList [ Left, Right, Right, Left ]
 
 
 genomeSize : Genome -> Int
