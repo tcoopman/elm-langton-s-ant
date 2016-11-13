@@ -1,10 +1,42 @@
-module World exposing (tick, init, colorAtPosition, generator)
+module World exposing (tick, init, stateAtPosition, generator)
 
+import Array exposing (Array)
 import Dict
 import Random
 import Random.Dict as RandomDict
 import Random.Extra as RandomExtra
-import Types exposing (ViewPort, Direction(..), Position, Ant(..), Color(..), Grid)
+import Types exposing (ViewPort, Direction(..), Position, Ant(..), State, Grid, LR(..))
+
+
+type Color
+    = White
+
+
+type alias Genome =
+    Array LR
+
+
+genome : Genome
+genome =
+    Array.fromList [ Left, Right ]
+
+
+genomeSize =
+    Array.length genome
+
+
+lr : Genome -> State -> LR
+lr genome state =
+    let
+        maybeLr =
+            Array.get state genome
+    in
+        case maybeLr of
+            Just lr ->
+                lr
+
+            Nothing ->
+                Debug.crash "this is an impossible state"
 
 
 init : ( Grid, Ant )
@@ -12,10 +44,10 @@ init =
     ( Dict.empty, Ant ( 0, 0 ) West )
 
 
-colorAtPosition : Grid -> Position -> Color
-colorAtPosition grid position =
+stateAtPosition : Grid -> Position -> State
+stateAtPosition grid position =
     Dict.get position grid
-        |> Maybe.withDefault White
+        |> Maybe.withDefault 0
 
 
 rotateRight : Ant -> Ant
@@ -50,14 +82,19 @@ rotateLeft (Ant position direction) =
             Ant position North
 
 
-flipColor : Grid -> Position -> Grid
-flipColor grid position =
-    case colorAtPosition grid position of
-        Black ->
-            Dict.remove position grid
+changeState : Grid -> Position -> Grid
+changeState grid position =
+    let
+        currentState =
+            stateAtPosition grid position
 
-        White ->
-            Dict.insert position Black grid
+        nextState =
+            (currentState + 1) % genomeSize
+    in
+        if nextState == 0 then
+            Dict.remove position grid
+        else
+            Dict.insert position nextState grid
 
 
 moveForward : Ant -> Ant
@@ -80,12 +117,20 @@ tick : ( Grid, Ant ) -> ( Grid, Ant )
 tick ( grid, ant ) =
     case ant of
         Ant position direction ->
-            case colorAtPosition grid position of
-                White ->
-                    ( flipColor grid position, ant |> rotateRight |> moveForward )
+            let
+                rotate =
+                    let
+                        currentState =
+                            stateAtPosition grid position
+                    in
+                        case lr genome currentState of
+                            Left ->
+                                rotateLeft
 
-                Black ->
-                    ( flipColor grid position, ant |> rotateLeft |> moveForward )
+                            Right ->
+                                rotateRight
+            in
+                ( changeState grid position, ant |> rotate |> moveForward )
 
 
 generator : Random.Generator ( Grid, Ant )
@@ -100,11 +145,11 @@ generator =
         randomPosition =
             Random.pair (Random.int min max) (Random.int min max)
 
-        randomColor =
-            RandomExtra.choice White Black
+        randomState =
+            Random.int 0 1
 
         randomGrid =
-            RandomDict.dict 100 randomPosition randomColor
+            RandomDict.dict 100 randomPosition randomState
 
         randomDirection =
             RandomExtra.sample [ North, East, South, West ]

@@ -2,9 +2,10 @@ module View.ViewSvg exposing (view)
 
 import Svg exposing (Svg, svg, rect)
 import Svg.Attributes as SvgA
-import Types exposing (ViewPort, Ant(..), Color(..), Grid, Direction(..), Position)
-import World exposing (colorAtPosition)
+import Types exposing (ViewPort, Ant(..), Grid, Direction(..), State, Position)
+import World exposing (stateAtPosition)
 import View.Helpers exposing (scale, positionsToDraw)
+import ColorHelper
 
 
 view : Grid -> Ant -> ViewPort -> Svg msg
@@ -79,21 +80,16 @@ viewAnt viewPort (Ant ( x, y ) direction) =
 viewGrid : ViewPort -> Grid -> Svg msg
 viewGrid viewPort grid =
     Svg.g []
-        (List.map (\pos -> ( pos, colorAtPosition grid pos )) (positionsToDraw viewPort grid)
-            |> List.map (\( pos, color ) -> viewSquare viewPort pos color)
+        (List.map (\pos -> ( pos, stateAtPosition grid pos )) (positionsToDraw viewPort grid)
+            |> List.map (\( pos, state ) -> viewSquare viewPort pos state)
         )
 
 
-viewSquare : ViewPort -> Position -> Color -> Svg msg
-viewSquare viewPort ( x, y ) color =
+viewSquare : ViewPort -> Position -> State -> Svg msg
+viewSquare viewPort ( x, y ) state =
     let
-        colorString =
-            case color of
-                White ->
-                    "white"
-
-                Black ->
-                    "black"
+        color =
+            ColorHelper.stateToColorString state
 
         scaleFactor =
             scale viewPort
@@ -103,7 +99,7 @@ viewSquare viewPort ( x, y ) color =
             , SvgA.y (y * scaleFactor |> toString)
             , SvgA.width (toString scaleFactor)
             , SvgA.height (toString scaleFactor)
-            , SvgA.fill colorString
+            , SvgA.fill color
             , SvgA.stroke "black"
             ]
             []

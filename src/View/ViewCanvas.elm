@@ -3,10 +3,10 @@ module View.ViewCanvas exposing (view)
 import Html exposing (Html)
 import Element
 import Collage exposing (Form)
-import Types exposing (ViewPort, Ant(..), Color(..), Grid, Direction(..), Position)
-import World exposing (colorAtPosition)
-import Color as CanvasColor exposing (black, white)
+import Types exposing (ViewPort, Ant(..), Grid, State, Direction(..), Position)
+import World exposing (stateAtPosition)
 import View.Helpers exposing (scale, positionsToDraw)
+import ColorHelper
 
 
 view : Grid -> Ant -> ViewPort -> Html msg
@@ -20,20 +20,15 @@ view grid ant viewPort =
 
 viewGrid : ViewPort -> Grid -> List Form
 viewGrid viewPort grid =
-    List.map (\pos -> ( pos, colorAtPosition grid pos )) (positionsToDraw viewPort grid)
-        |> List.map (\( pos, color ) -> createSquare viewPort pos color)
+    List.map (\pos -> ( pos, stateAtPosition grid pos )) (positionsToDraw viewPort grid)
+        |> List.map (\( pos, state ) -> createSquare viewPort pos state)
 
 
-createSquare : ViewPort -> Position -> Color -> Form
-createSquare viewPort ( x, y ) color =
+createSquare : ViewPort -> Position -> State -> Form
+createSquare viewPort ( x, y ) state =
     let
         canvasColor =
-            case color of
-                White ->
-                    white
-
-                Black ->
-                    black
+            ColorHelper.stateToColor state
 
         scaleFactor =
             scale viewPort |> toFloat

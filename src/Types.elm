@@ -25,10 +25,14 @@ type Ant
     = Ant Position Direction
 
 
-type Color
-    = Black
-    | White
-
-
 type alias Grid =
-    Dict Position Color
+    Dict Position State
+
+
+type alias State =
+    Int
+
+
+type LR
+    = Left
+    | Right
