@@ -44,7 +44,10 @@ lr genome state =
                 lr
 
             Nothing ->
-                Debug.crash "this is an impossible state"
+                Debug.crash
+                    ("this is an impossible state: incorrect value was: "
+                        ++ (toString state)
+                    )
 
 
 init : World
@@ -160,7 +163,7 @@ generator =
             Random.pair (Random.int min max) (Random.int min max)
 
         randomState =
-            Random.int 0 1
+            Random.int 0 ((genomeSize defaultGenome) - 1)
 
         randomGrid =
             RandomDict.dict 100 randomPosition randomState
