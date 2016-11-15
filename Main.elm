@@ -3,7 +3,6 @@ module Main exposing (..)
 import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events exposing (onClick)
-import Html.App as App
 import Time exposing (Time, millisecond)
 import World exposing (World, tick)
 import View exposing (Renderer)
@@ -81,7 +80,7 @@ update msg ({ world, speed, viewPort } as model) =
         Tick t ->
             let
                 tickTimes times =
-                    List.foldl (\_ old -> tick old) world [1..times]
+                    List.foldl (\_ old -> tick old) world (List.range 1 times)
 
                 newWorld =
                     case model.turbo of
@@ -132,7 +131,7 @@ subscriptions model =
 
 
 main =
-    App.program
+    Html.program
         { init = ( newModel, Cmd.none )
         , view = view
         , update = update
